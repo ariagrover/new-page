@@ -127,10 +127,15 @@
   .group-title-wrap{ display:flex; align-items:baseline; gap:10px; flex:1; min-width:0; }
   .group-title{ font-family: var(--font-display); font-size: 19px; font-weight:500; }
   .group-sub{ font-size: 12px; color: var(--text-faint); }
-  .group-actions{ display:flex; gap:14px; flex-shrink:0; }
+  .group-actions{ display:flex; gap:14px; flex-shrink:0; align-items:center; }
   .group-actions button{ background:none; border:none; color: var(--text-faint); font-size: 11.5px; cursor:pointer; }
   .group-actions button:hover{ color: var(--accent); }
   .group-actions button.danger:hover{ color: var(--danger); }
+  .group-actions button[disabled]{ color: var(--border); cursor:default; }
+  .group-actions button[data-move-group]{ font-size: 13px; }
+  .reorder-btn{ display:flex; align-items:center; justify-content:center; width:20px; height:20px; padding:0 !important; }
+  .reorder-btn:disabled{ opacity:.3; cursor:default; }
+  .reorder-btn:disabled:hover{ color: var(--text-faint) !important; }
 
   .link-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
   .link-tile{
@@ -640,13 +645,13 @@
   var groupsWrap = document.getElementById("groupsWrap");
   function renderGroups(){
     groupsWrap.innerHTML = "";
-    state.groups.forEach(function(g){
+    state.groups.forEach(function(g, idx){
       var sec = document.createElement("div");
       sec.className = "group";
       sec.innerHTML =
         '<div class="group-head">' +
           '<div class="group-title-wrap"><div class="group-title">'+escapeHtml(g.title)+'</div>'+(g.sub ? '<div class="group-sub">'+escapeHtml(g.sub)+'</div>' : '')+'</div>' +
-          '<div class="group-actions"><button data-del-group="'+g.id+'" class="danger">Remove group</button></div>' +
+          '<div class="group-actions"><button data-move-group="up" data-group-id="'+g.id+'" title="Move up"'+(idx===0?' disabled':'')+'>↑</button><button data-move-group="down" data-group-id="'+g.id+'" title="Move down"'+(idx===state.groups.length-1?' disabled':'')+'>↓</button><button data-del-group="'+g.id+'" class="danger">Remove group</button></div>' +
         '</div>' +
         '<div class="link-grid" data-group="'+g.id+'"></div>';
       groupsWrap.appendChild(sec);
@@ -688,6 +693,19 @@
     if(delGroup){
       state.groups = state.groups.filter(function(g){ return g.id !== delGroup.dataset.delGroup; });
       saveState(); refreshAll();
+    }
+    var moveGroup = ev.target.closest("[data-move-group]");
+    if(moveGroup && !moveGroup.disabled){
+      var gid = moveGroup.dataset.groupId;
+      var dir = moveGroup.dataset.moveGroup;
+      var idx = state.groups.findIndex(function(g){ return g.id === gid; });
+      var swapWith = dir === "up" ? idx - 1 : idx + 1;
+      if(idx > -1 && swapWith > -1 && swapWith < state.groups.length){
+        var tmp = state.groups[idx];
+        state.groups[idx] = state.groups[swapWith];
+        state.groups[swapWith] = tmp;
+        saveState(); renderGroups();
+      }
     }
     var editLink = ev.target.closest("[data-edit-link]");
     if(editLink){
